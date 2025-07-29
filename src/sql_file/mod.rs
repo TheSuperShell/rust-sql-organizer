@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 #[derive(Debug, Clone)]
-pub struct SqlFileError(String);
+pub struct SqlFileError;
 
 #[derive(Debug, Clone)]
 pub struct SqlFile {
@@ -13,11 +13,11 @@ impl SqlFile {
     pub fn new(path: &Path) -> Result<SqlFile, SqlFileError> {
         let file_name = match path.file_stem() {
             Some(name) => name.to_str().unwrap().to_string(),
-            None => return Err(SqlFileError("Could not get file name".to_string())),
+            None => return Err(SqlFileError),
         };
         let sql_text = match fs::read_to_string(path) {
             Ok(val) => val,
-            Err(e) => return Err(SqlFileError(format!("Could not open the file: {}", e))),
+            Err(_) => return Err(SqlFileError),
         };
         Ok(SqlFile {
             file_name,
