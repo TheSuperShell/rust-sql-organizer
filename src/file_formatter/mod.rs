@@ -3,14 +3,10 @@ use lazy_static::lazy_static;
 use crate::sql_file::SqlFile;
 use regex::Regex;
 
-lazy_static! {
-    static ref REMOVE_COMMENTS_RE: Regex = Regex::new(r"(?mi)--\s+use").unwrap();
-}
-
-type FileFormatter = fn(&SqlFile) -> String;
+type FileFormatterFunc = fn(&SqlFile) -> String;
 
 pub struct FileFormatters {
-    formatters: Vec<FileFormatter>,
+    formatters: Vec<FileFormatterFunc>,
 }
 
 impl FileFormatters {
@@ -46,7 +42,8 @@ pub fn format_endln(sql_file: &SqlFile) -> String {
 }
 
 lazy_static! {
-    pub static ref FILE_FORMATTER: FileFormatters = FileFormatters {
+    static ref REMOVE_COMMENTS_RE: Regex = Regex::new(r"(?mi)--\s+use").unwrap();
+    pub static ref STANDARD_FILE_FORMATTER: FileFormatters = FileFormatters {
         formatters: vec![
             format_name,
             format_split,

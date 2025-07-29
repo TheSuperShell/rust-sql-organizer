@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use rust_sql_organizer::file_formatter::{
-    FileFormatters, FILE_FORMATTER, FILE_FORMATTER_NO_COMMENTS,
+    FileFormatters, FILE_FORMATTER_NO_COMMENTS, STANDARD_FILE_FORMATTER,
 };
 use rust_sql_organizer::searcher::{get_all_files, EmptyFileExtensionError, FileExtension};
 use rust_sql_organizer::sorter::{Key, SORTING_STRATEGIES};
@@ -70,9 +70,9 @@ fn main() -> Result<(), CliError> {
         Ok(files) => files,
         Err(_) => return Err(CliError::SqlFileError),
     };
-    let sql_file_formatter: FileFormatters = match args.remove_comments {
-        true => FILE_FORMATTER,
-        false => FILE_FORMATTER_NO_COMMENTS,
+    let sql_file_formatter: &FileFormatters = match args.remove_comments {
+        true => &FILE_FORMATTER_NO_COMMENTS,
+        false => &STANDARD_FILE_FORMATTER,
     };
 
     for file in sql_files {
