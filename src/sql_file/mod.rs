@@ -25,6 +25,14 @@ impl SqlFile {
         })
     }
 
+    #[cfg(test)]
+    pub fn test_new(file_name: &str, sql_text: &str) -> SqlFile {
+        SqlFile {
+            file_name: file_name.to_string(),
+            sql_text: sql_text.to_string(),
+        }
+    }
+
     pub fn get_file_name(&self) -> &str {
         self.file_name.as_str()
     }

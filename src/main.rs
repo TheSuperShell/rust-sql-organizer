@@ -1,6 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
+use rust_sql_organizer::file_formatter::{
+    FileFormatters, FILE_FORMATTER, FILE_FORMATTER_NO_COMMENTS,
+};
 use rust_sql_organizer::searcher::{get_all_files, EmptyFileExtensionError, FileExtension};
 use rust_sql_organizer::sorter::{Key, SORTING_STRATEGIES};
 use rust_sql_organizer::sql_file::SqlFile;
@@ -10,7 +13,7 @@ enum CliError {
     ExtensionError,
     FileError,
     SortingStratError,
-    SqlFileError(String),
+    SqlFileError,
 }
 
 #[derive(Parser)]
@@ -25,6 +28,10 @@ struct Cli {
     /// Sorting Strategy. Default: first_number, folder
     #[arg(short, long)]
     sorter: Option<Vec<String>>,
+
+    /// Remove the sql comments from USE statements
+    #[arg(short = 'r', long, default_value_t = false)]
+    remove_comments: bool,
 }
 
 fn main() -> Result<(), CliError> {
@@ -61,7 +68,11 @@ fn main() -> Result<(), CliError> {
     }
     let sql_files: Vec<SqlFile> = match files.iter().map(|file| SqlFile::new(&file)).collect() {
         Ok(files) => files,
-        Err(e) => return Err(CliError::SqlFileError(format!("{:?}", e))),
+        Err(_) => return Err(CliError::SqlFileError),
+    };
+    let sql_file_formatter: FileFormatters = match args.remove_comments {
+        true => FILE_FORMATTER,
+        false => FILE_FORMATTER_NO_COMMENTS,
     };
 
     for file in sql_files {
