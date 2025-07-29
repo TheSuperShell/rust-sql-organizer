@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
+use rust_sql_organizer::file_combiner::combine_sql_files;
 use rust_sql_organizer::file_formatter::{
     FileFormatters, FILE_FORMATTER_NO_COMMENTS, STANDARD_FILE_FORMATTER,
 };
@@ -14,6 +15,8 @@ enum CliError {
     FileError,
     SortingStratError,
     SqlFileError,
+    TargetExistsError,
+    CombineError,
 }
 
 #[derive(Parser)]
@@ -32,6 +35,14 @@ struct Cli {
     /// Remove the sql comments from USE statements
     #[arg(short = 'r', long, default_value_t = false)]
     remove_comments: bool,
+
+    /// Target file
+    #[arg(short, long)]
+    target: Option<PathBuf>,
+
+    /// Overwrite the target file
+    #[arg(short, long, default_value_t = false)]
+    overwrite: bool,
 }
 
 fn main() -> Result<(), CliError> {
@@ -74,9 +85,17 @@ fn main() -> Result<(), CliError> {
         true => &FILE_FORMATTER_NO_COMMENTS,
         false => &STANDARD_FILE_FORMATTER,
     };
+    let target = args
+        .target
+        .unwrap_or(Path::new("./target.sql").to_path_buf());
 
-    for file in sql_files {
-        println!("File: {}", file.get_file_name())
+    if !args.overwrite && target.exists() {
+        return Err(CliError::TargetExistsError);
     }
+
+    if let Err(_) = combine_sql_files(&target, &sql_files, sql_file_formatter) {
+        return Err(CliError::CombineError);
+    }
+
     Ok(())
 }

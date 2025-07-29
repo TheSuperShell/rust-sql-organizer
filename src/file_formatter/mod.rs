@@ -14,6 +14,13 @@ impl FileFormatters {
         let strings: Vec<String> = self.formatters.iter().map(|&fmt| fmt(sql_file)).collect();
         strings.join("\n")
     }
+
+    #[cfg(test)]
+    pub fn test_new(formatter: FileFormatterFunc) -> FileFormatters {
+        FileFormatters {
+            formatters: vec![formatter],
+        }
+    }
 }
 
 pub fn format_name(sql_file: &SqlFile) -> String {
