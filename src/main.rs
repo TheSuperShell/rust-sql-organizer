@@ -3,12 +3,14 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use rust_sql_organizer::searcher::{get_all_files, EmptyFileExtensionError, FileExtension};
 use rust_sql_organizer::sorter::{Key, SORTING_STRATEGIES};
+use rust_sql_organizer::sql_file::SqlFile;
 
 #[derive(Clone, Debug)]
 enum CliError {
     ExtensionError,
     FileError,
     SortingStratError,
+    SqlFileError(String),
 }
 
 #[derive(Parser)]
@@ -57,8 +59,13 @@ fn main() -> Result<(), CliError> {
     for sorting_start in sorting_strats {
         files.sort_by_key(|path| sorting_start(path));
     }
-    for file in files {
-        println!("File: {:?}", file)
+    let sql_files: Vec<SqlFile> = match files.iter().map(|file| SqlFile::new(&file)).collect() {
+        Ok(files) => files,
+        Err(e) => return Err(CliError::SqlFileError(format!("{:?}", e))),
+    };
+
+    for file in sql_files {
+        println!("File: {}", file.get_file_name())
     }
     Ok(())
 }
