@@ -1,5 +1,7 @@
 use glob::glob;
 use std::path::{Path, PathBuf};
+pub mod error;
+use error::Error;
 
 #[derive(Debug, Clone)]
 pub struct EmptyFileExtensionError;
@@ -10,10 +12,10 @@ pub struct FileExtension {
 }
 
 impl FileExtension {
-    pub fn new(extension: &str) -> Result<FileExtension, EmptyFileExtensionError> {
+    pub fn new(extension: &str) -> Result<FileExtension, Error> {
         let extension = extension.trim();
         if extension.len() == 0 {
-            return Err(EmptyFileExtensionError);
+            return Err(Error::EmptyFileExtension);
         }
         Ok(FileExtension {
             extension: extension.to_string(),
@@ -25,24 +27,15 @@ impl FileExtension {
     }
 }
 
-pub fn get_all_files(
-    path: &Path,
-    file_formats: &[FileExtension],
-) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+pub fn get_all_files(path: &Path, file_formats: &[FileExtension]) -> Result<Vec<PathBuf>, Error> {
     let mut result: Vec<PathBuf> = Vec::new();
     for file_format in file_formats {
         let glob_str = file_format.get_glob();
         let pattern_path = path.join(Path::new(&glob_str));
-        let pattern = match pattern_path.to_str() {
-            Some(patter_str) => patter_str,
-            None => continue,
-        };
+        let pattern = pattern_path.to_str().expect("UTF-8 error in the pattern");
         let glob_result = glob(&pattern)?;
         for path_result in glob_result {
-            match path_result {
-                Ok(new_path) => result.push(new_path),
-                Err(_) => continue,
-            }
+            result.push(path_result?);
         }
     }
     Ok(result)

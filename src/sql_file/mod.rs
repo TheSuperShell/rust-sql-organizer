@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
-#[derive(Debug, Clone)]
-pub struct SqlFileError;
+pub mod error;
+use error::Error;
 
 #[derive(Debug, Clone)]
 pub struct SqlFile {
@@ -10,15 +10,14 @@ pub struct SqlFile {
 }
 
 impl SqlFile {
-    pub fn new(path: &Path) -> Result<SqlFile, SqlFileError> {
-        let file_name = match path.file_stem() {
-            Some(name) => name.to_str().unwrap().to_string(),
-            None => return Err(SqlFileError),
-        };
-        let sql_text = match fs::read_to_string(path) {
-            Ok(val) => val,
-            Err(_) => return Err(SqlFileError),
-        };
+    pub fn new(path: &Path) -> Result<SqlFile, Error> {
+        let file_name = path
+            .file_stem()
+            .expect("No file stem was found")
+            .to_str()
+            .expect("File name is empty!")
+            .to_string();
+        let sql_text = fs::read_to_string(path)?;
         Ok(SqlFile {
             file_name,
             sql_text,

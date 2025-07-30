@@ -5,19 +5,9 @@ use rust_sql_organizer::file_combiner::combine_sql_files;
 use rust_sql_organizer::file_formatter::{
     FileFormatters, FILE_FORMATTER_NO_COMMENTS, STANDARD_FILE_FORMATTER,
 };
-use rust_sql_organizer::searcher::{get_all_files, EmptyFileExtensionError, FileExtension};
-use rust_sql_organizer::sorter::{Key, SORTING_STRATEGIES};
-use rust_sql_organizer::sql_file::SqlFile;
-
-#[derive(Clone, Debug)]
-enum CliError {
-    ExtensionError,
-    FileError,
-    SortingStratError,
-    SqlFileError,
-    TargetExistsError,
-    CombineError,
-}
+use rust_sql_organizer::searcher::{self, get_all_files, FileExtension};
+use rust_sql_organizer::sorter::{OrdFn, SORTING_STRATEGIES};
+use rust_sql_organizer::sql_file::{self, SqlFile};
 
 #[derive(Parser)]
 struct Cli {
@@ -45,42 +35,32 @@ struct Cli {
     overwrite: bool,
 }
 
-fn main() -> Result<(), CliError> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
-    let extensions_result: Result<Vec<FileExtension>, EmptyFileExtensionError> = args
+    let extensions = args
         .extension
         .unwrap_or(vec!["sql".to_string()])
         .iter()
         .map(|x| FileExtension::new(x))
-        .collect();
-    let extensions: Vec<FileExtension> = match extensions_result {
-        Ok(ext) => ext,
-        Err(_) => return Err(CliError::ExtensionError),
-    };
+        .collect::<Result<Vec<FileExtension>, searcher::error::Error>>()?;
     let path = args.path.unwrap_or(Path::new(".").to_path_buf());
-    let mut files = match get_all_files(&path, &extensions) {
-        Ok(files) => files,
-        Err(_) => return Err(CliError::FileError),
-    };
-    let sorting_strats: Vec<&fn(&PathBuf) -> Key> = match args
+    let mut files = get_all_files(&path, &extensions)?;
+    let sorting_strats: Vec<&OrdFn> = args
         .sorter
         .unwrap_or(vec!["folder".to_string(), "first_number".to_string()])
         .iter()
         .map(|strat| SORTING_STRATEGIES.get(strat))
         .rev()
-        .collect()
-    {
-        Some(strats) => strats,
-        None => return Err(CliError::SortingStratError),
-    };
+        .collect::<Option<Vec<&OrdFn>>>()
+        .expect("Invalud strategy name");
 
-    for sorting_start in sorting_strats {
-        files.sort_by_key(|path| sorting_start(path));
+    for sorting_strat in sorting_strats {
+        files.sort_by_key(|path| sorting_strat(path));
     }
-    let sql_files: Vec<SqlFile> = match files.iter().map(|file| SqlFile::new(&file)).collect() {
-        Ok(files) => files,
-        Err(_) => return Err(CliError::SqlFileError),
-    };
+    let sql_files = files
+        .iter()
+        .map(|file| SqlFile::new(&file))
+        .collect::<Result<Vec<SqlFile>, sql_file::error::Error>>()?;
     let sql_file_formatter: &FileFormatters = match args.remove_comments {
         true => &FILE_FORMATTER_NO_COMMENTS,
         false => &STANDARD_FILE_FORMATTER,
@@ -90,12 +70,11 @@ fn main() -> Result<(), CliError> {
         .unwrap_or(Path::new("./target.sql").to_path_buf());
 
     if !args.overwrite && target.exists() {
-        return Err(CliError::TargetExistsError);
+        eprintln!("Target table already exists. Please use --overwrite flag in order to ovdrwrite this file");
+        return Ok(());
     }
 
-    if let Err(_) = combine_sql_files(&target, &sql_files, sql_file_formatter) {
-        return Err(CliError::CombineError);
-    }
-
+    combine_sql_files(&target, &sql_files, sql_file_formatter)?;
+    println!("Success!");
     Ok(())
 }

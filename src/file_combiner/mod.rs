@@ -2,32 +2,24 @@ use std::{fs::OpenOptions, io::Write, path::PathBuf};
 
 use crate::{file_formatter::FileFormatters, sql_file::SqlFile};
 
-#[derive(Clone, Debug)]
-pub struct CombineError;
+pub mod error;
+use error::Error;
 
 pub fn combine_sql_files(
     target: &PathBuf,
     files: &[SqlFile],
     formatter: &FileFormatters,
-) -> Result<(), CombineError> {
-    let mut file = match OpenOptions::new()
+) -> Result<(), Error> {
+    let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open(target)
-    {
-        Ok(f) => f,
-        Err(_) => return Err(CombineError),
-    };
-    let _: Vec<_> = match files
+        .open(target)?;
+    let _: Vec<_> = files
         .iter()
         .map(|x| formatter.format(x))
         .map(move |x| file.write(x.as_bytes()))
-        .collect()
-    {
-        Ok(a) => a,
-        Err(_) => return Err(CombineError),
-    };
+        .collect::<Result<Vec<_>, std::io::Error>>()?;
     Ok(())
 }
 

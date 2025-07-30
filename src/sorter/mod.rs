@@ -4,7 +4,7 @@ use std::{cmp::Ordering, path::PathBuf};
 
 use lazy_static::lazy_static;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Key {
     Num(i32),
     Text(String),
@@ -27,7 +27,7 @@ impl PartialOrd for Key {
     }
 }
 
-type OrdFn = fn(&PathBuf) -> Key;
+pub type OrdFn = fn(&PathBuf) -> Key;
 
 lazy_static! {
     static ref NUMBER_RE: Regex = Regex::new("[0-9]+").unwrap();
