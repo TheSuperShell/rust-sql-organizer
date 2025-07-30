@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
+use log::{debug, error, info};
 use rust_sql_organizer::file_combiner::combine_sql_files;
 use rust_sql_organizer::file_formatter::{
     FileFormatters, FILE_FORMATTER_NO_COMMENTS, STANDARD_FILE_FORMATTER,
@@ -33,18 +34,42 @@ struct Cli {
     /// Overwrite the target file
     #[arg(short, long, default_value_t = false)]
     overwrite: bool,
+
+    #[command(flatten)]
+    verbosity: clap_verbosity_flag::Verbosity,
+
+    /// Write output to the log file
+    out: Option<PathBuf>,
+}
+
+fn create_output_file(target: PathBuf) -> std::io::Result<std::fs::File> {
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(target)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::parse();
+    let mut log_builder = env_logger::Builder::new();
+    match args.out {
+        Some(t) => log_builder.target(env_logger::Target::Pipe(Box::new(create_output_file(t)?))),
+        None => log_builder.target(env_logger::Target::Stderr),
+    };
+    log_builder.filter_level(args.verbosity.into()).init();
+    info!("Starting the app");
     let extensions = args
         .extension
         .unwrap_or(vec!["sql".to_string()])
         .iter()
         .map(|x| FileExtension::new(x))
         .collect::<Result<Vec<FileExtension>, searcher::error::Error>>()?;
+    debug!("Collected all the extensions");
     let path = args.path.unwrap_or(Path::new(".").to_path_buf());
+    debug!("Collected the path");
     let mut files = get_all_files(&path, &extensions)?;
+    debug!("Found all the files");
     let sorting_strats: Vec<&OrdFn> = args
         .sorter
         .unwrap_or(vec!["folder".to_string(), "first_number".to_string()])
@@ -53,28 +78,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .rev()
         .collect::<Option<Vec<&OrdFn>>>()
         .expect("Invalud strategy name");
+    debug!("Collected all the soring strategies");
 
     for sorting_strat in sorting_strats {
         files.sort_by_key(|path| sorting_strat(path));
     }
+    debug!("Sorted the files");
     let sql_files = files
         .iter()
         .map(|file| SqlFile::new(&file))
         .collect::<Result<Vec<SqlFile>, sql_file::error::Error>>()?;
+    debug!("Collected all the sql files");
     let sql_file_formatter: &FileFormatters = match args.remove_comments {
         true => &FILE_FORMATTER_NO_COMMENTS,
         false => &STANDARD_FILE_FORMATTER,
     };
+    debug!("Collected the file formatters");
     let target = args
         .target
         .unwrap_or(Path::new("./target.sql").to_path_buf());
+    debug!("Collected the target file");
 
     if !args.overwrite && target.exists() {
-        eprintln!("Target table already exists. Please use --overwrite flag in order to ovdrwrite this file");
+        error!("Target table already exists. Please use --overwrite flag in order to overwrite this file");
         return Ok(());
     }
 
     combine_sql_files(&target, &sql_files, sql_file_formatter)?;
-    println!("Success!");
+    info!("Successfully created the file {:?}", target);
     Ok(())
 }
