@@ -39,6 +39,7 @@ struct Cli {
     verbosity: clap_verbosity_flag::Verbosity,
 
     /// Write output to the log file
+    #[arg(long)]
     out: Option<PathBuf>,
 }
 

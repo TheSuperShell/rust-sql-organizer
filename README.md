@@ -46,7 +46,7 @@ rust-sql-organizer /folder -t /my_target.sql --overwrite
 - Choose sorting strategies
 
 ```bash
-rust-sql-organizer /folder -so last_number
+rust-sql-organizer /folder -s last_number
 ```
 
 You can also chain the startegies, the priority is determined by the position, higher to lower priority
@@ -58,5 +58,12 @@ Here are all the available strategies for now
 | last_number  | The ordering is based on the last number found in the file name. 0 will be used if no number is found<br>Example: `100_SCRIPT_2.sql` -> 2 will be used for sorting     |
 | folder       | The name of the last folder will be used for soring. Sorting is done in an alphabetical order<br>Example: `my/folder/100_SCRIPT.sql` -> folder will be used for soring |
 
+- Write output to the file
+
+Use parameter `--out` with the file path to write the utput into the file
+
+```bash
+rust-sql-organizer /folder --out output.log
+```
 
 

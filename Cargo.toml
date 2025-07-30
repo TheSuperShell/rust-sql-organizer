@@ -5,6 +5,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Steven Rudenko steven.gucum@gmail.com"]
 repository = "https://github.com/TheSuperShell/rust-sql-organizer"
+homepage = "https://github.com/TheSuperShell/rust-sql-organizer"
 readme = "README.md"
 license = "LICENSE"
 keywords = ["cli", "sql", "os"]
