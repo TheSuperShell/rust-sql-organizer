@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use rust_sql_organizer::file_combiner::combine_sql_files;
 use rust_sql_organizer::file_formatter::{
     FileFormatters, FILE_FORMATTER_NO_COMMENTS, STANDARD_FILE_FORMATTER,
@@ -68,7 +68,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     debug!("Collected all the extensions");
     let path = args.path.unwrap_or(Path::new(".").to_path_buf());
     debug!("Collected the path");
-    let mut files = get_all_files(&path, &extensions)?;
+    let mut file_results = get_all_files(&path, &extensions)?;
+    let (mut ok_files, err_files): (Vec<_>, Vec<_>) =
+        file_results.iter_mut().partition(|r| r.is_ok());
+    let mut files: Vec<&PathBuf> = ok_files.iter_mut().map(|r| r.as_ref().unwrap()).collect();
+    for err in err_files {
+        warn!("Could not get file: {:?}", err.as_ref().unwrap_err());
+    }
+    if files.len() == 0 {
+        info!("No files with the specified extension(s) found");
+        println!("No files with the specified extension(s) found");
+        return Ok(());
+    }
     debug!("Found all the files");
     let sorting_strats: Vec<&OrdFn> = args
         .sorter
@@ -106,5 +117,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     combine_sql_files(&target, &sql_files, sql_file_formatter)?;
     info!("Successfully created the file {:?}", target);
+    println!("Success");
     Ok(())
 }

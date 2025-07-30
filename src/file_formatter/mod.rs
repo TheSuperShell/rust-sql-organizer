@@ -11,8 +11,11 @@ pub struct FileFormatters {
 
 impl FileFormatters {
     pub fn format(&self, sql_file: &SqlFile) -> String {
-        let strings: Vec<String> = self.formatters.iter().map(|&fmt| fmt(sql_file)).collect();
-        strings.join("\n")
+        self.formatters
+            .iter()
+            .map(|&fmt| fmt(sql_file))
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 
     #[cfg(test)]

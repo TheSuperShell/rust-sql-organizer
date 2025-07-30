@@ -1,4 +1,4 @@
-use glob::glob;
+use glob::{glob, GlobError};
 use std::path::{Path, PathBuf};
 pub mod error;
 use error::Error;
@@ -27,16 +27,16 @@ impl FileExtension {
     }
 }
 
-pub fn get_all_files(path: &Path, file_formats: &[FileExtension]) -> Result<Vec<PathBuf>, Error> {
-    let mut result: Vec<PathBuf> = Vec::new();
+pub fn get_all_files(
+    path: &Path,
+    file_formats: &[FileExtension],
+) -> Result<Vec<Result<PathBuf, GlobError>>, Error> {
+    let mut result: Vec<Result<PathBuf, GlobError>> = Vec::new();
     for file_format in file_formats {
         let glob_str = file_format.get_glob();
         let pattern_path = path.join(Path::new(&glob_str));
         let pattern = pattern_path.to_str().expect("UTF-8 error in the pattern");
-        let glob_result = glob(&pattern)?;
-        for path_result in glob_result {
-            result.push(path_result?);
-        }
+        result.extend(glob(&pattern)?);
     }
     Ok(result)
 }
@@ -45,7 +45,7 @@ pub fn get_all_files(path: &Path, file_formats: &[FileExtension]) -> Result<Vec<
 mod searcher_test {
     use super::{get_all_files, FileExtension};
     use std::fs::File;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tempdir::TempDir;
 
     #[test]
@@ -94,7 +94,12 @@ mod searcher_test {
         ];
         let all_files = get_all_files(&tmp_dir.path(), &file_extensions);
         assert!(all_files.is_ok());
-        for file in all_files.unwrap() {
+        let all_files = all_files.unwrap();
+        let (ok_res, err_res): (Vec<_>, Vec<_>) = all_files.iter().partition(|&r| r.is_ok());
+        assert_eq!(err_res.len(), 0);
+        let ok_files: Vec<&PathBuf> = ok_res.iter().map(|&r| r.as_ref().unwrap()).collect();
+
+        for file in ok_files {
             assert!(expected_files.contains(&file.file_name().unwrap().to_str().unwrap()));
             assert!(file.file_name().unwrap().to_str().unwrap() != "test_3.txt");
         }
