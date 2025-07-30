@@ -3,9 +3,6 @@ use std::path::{Path, PathBuf};
 pub mod error;
 use error::Error;
 
-#[derive(Debug, Clone)]
-pub struct EmptyFileExtensionError;
-
 #[derive(Clone, Debug)]
 pub struct FileExtension {
     extension: String,
